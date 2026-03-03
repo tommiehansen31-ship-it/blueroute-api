@@ -20,6 +20,23 @@ app.get('/', (req, res) => {
   res.send('BlueRoute API is running 🚀');
 });
 
+// Database test route
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({
+      connected: true,
+      time: result.rows[0]
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      connected: false,
+      error: error.message
+    });
+  }
+});
+
 // Track shipment
 app.get('/api/track/:trackingNumber', async (req, res) => {
   const { trackingNumber } = req.params;
