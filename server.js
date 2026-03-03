@@ -104,7 +104,7 @@ app.post('/api/admin/create-shipment', async (req, res) => {
     // Insert into shipments table
     const shipmentInsert = await pool.query(
       `INSERT INTO shipments 
-      (tracking_number, origin, destination, status, created_at, last_updated)
+      (tracking_number, origin, destination, status, last_updated)
       VALUES ($1, $2, $3, $4, NOW(), NOW())
       RETURNING id`,
       [trackingNumber, origin, destination, 'Shipment Created']
