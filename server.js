@@ -20,6 +20,11 @@ app.get('/', (req, res) => {
   res.send('BlueRoute API is running 🚀');
 });
 
+// 🔥 HEALTH CHECK ENDPOINT (ADDED - NO OTHER CODE CHANGED)
+app.get('/health', (req, res) => {
+  res.json({ status: "ok" });
+});
+
 // Database test route
 app.get('/api/test-db', async (req, res) => {
   try {
@@ -71,10 +76,15 @@ app.get('/api/track/:trackingNumber', async (req, res) => {
 });
 
 /* =========================================================
-   🔥 NEW ADMIN CREATE SHIPMENT ENDPOINT (ADDED ONLY)
+   🔥 NEW ADMIN CREATE SHIPMENT ENDPOINT (UPGRADED)
    ========================================================= */
 
 app.post('/api/admin/create-shipment', async (req, res) => {
+
+  // 🔐 ADMIN SECRET PROTECTION (ADDED)
+  if (req.headers.authorization !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
 
   const {
     senderName,
@@ -97,6 +107,11 @@ app.post('/api/admin/create-shipment', async (req, res) => {
   } = req.body;
 
   try {
+
+    // ✅ INPUT VALIDATION (ADDED)
+    if (!origin || !destination) {
+      return res.status(400).json({ error: "Origin and destination required" });
+    }
 
     // Generate tracking number
     const trackingNumber = 'BR' + Date.now();
