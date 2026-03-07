@@ -401,3 +401,10 @@ const PORT=process.env.PORT||3000;
 app.listen(PORT,()=>{
 console.log(`Server running on port ${PORT}`);
 });
+
+// =============================
+// ADMIN SESSION CHECK
+// =============================
+app.get("/api/admin/session-check", (req, res) => {
+  res.json({ status: "ok" });
+});
