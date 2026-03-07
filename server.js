@@ -393,7 +393,7 @@ res.status(500).json({error:"Failed to create shipment"});
 });
 
 app.get("/health", (req, res) => {
-  res.send("OK");
+res.send("OK");
 });
 
 const PORT=process.env.PORT||3000;
@@ -402,9 +402,28 @@ app.listen(PORT,()=>{
 console.log(`Server running on port ${PORT}`);
 });
 
+/* =========================================================
+ADMIN LOGIN
+========================================================= */
+
+app.post("/api/admin/login",(req,res)=>{
+
+const{username,password}=req.body;
+
+if(
+username==="admin" &&
+password==="BlueRoute@2026"
+){
+return res.json({success:true});
+}
+
+res.status(401).json({success:false});
+
+});
+
 // =============================
 // ADMIN SESSION CHECK
 // =============================
 app.get("/api/admin/session-check", (req, res) => {
-  res.json({ status: "ok" });
+res.json({ status: "ok" });
 });
