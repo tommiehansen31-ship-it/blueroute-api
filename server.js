@@ -260,7 +260,7 @@ tracking_number AS tracking,
 status,
 origin,
 destination
-FROM shipments
+FROM public.shipments
 ORDER BY id DESC
 `);
 
