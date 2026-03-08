@@ -250,17 +250,17 @@ res.status(500).json({success:false});
 ADMIN SHIPMENT LIST
 ========================================================= */
 
-app.get('/api/admin/shipments',async(req,res)=>{
+app.get('/api/admin/shipments', async (req,res)=>{
 
 try{
 
 const result = await pool.query(`
 SELECT
 tracking_number AS tracking,
-status,
 origin,
-destination
-FROM public.shipments
+destination,
+status
+FROM shipments
 ORDER BY id DESC
 `);
 
@@ -268,7 +268,7 @@ res.json(result.rows);
 
 }catch(error){
 
-console.error("Shipment list error:",error);
+console.error("Shipment list error:", error);
 
 res.status(500).json({
 error:"Failed",
