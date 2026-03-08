@@ -10,17 +10,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* =========================================================
-DATABASE
-========================================================= */
-
 const pool = new Pool({
 connectionString: process.env.DATABASE_URL,
 ssl:{rejectUnauthorized:false}
 });
 
 /* =========================================================
-ADMIN SESSION STORAGE
+ADMIN SESSION STORE
 ========================================================= */
 
 let ADMIN_SESSIONS = {};
@@ -29,22 +25,19 @@ let ADMIN_SESSIONS = {};
 ADMIN AUTH MIDDLEWARE
 ========================================================= */
 
-app.use("/api/admin",(req,res,next)=>{
+app.use('/api/admin',(req,res,next)=>{
 
-/* allow login without token */
 if(req.path === "/login"){
 return next();
 }
 
-const token = req.headers.authorization;
+const token=req.headers.authorization;
 
-/* allow ADMIN_SECRET */
-if(token === process.env.ADMIN_SECRET){
-return next();
+if(!token){
+return res.status(403).json({error:"Unauthorized"});
 }
 
-/* allow valid login session */
-if(token && ADMIN_SESSIONS[token]){
+if(ADMIN_SESSIONS[token]){
 return next();
 }
 
@@ -90,26 +83,6 @@ html:`
 });
 }
 
-if(data.receiverEmail){
-await mailer.sendMail({
-from:`"BlueRoute Express" <${process.env.EMAIL_USER}>`,
-to:data.receiverEmail,
-subject:`Shipment Incoming — ${data.trackingNumber}`,
-html:`
-<h2>Shipment On The Way</h2>
-
-<p>Hello ${data.receiverName || "Customer"},</p>
-
-<p>A shipment is on the way to you.</p>
-
-<p><strong>Tracking Number:</strong> ${data.trackingNumber}</p>
-
-<p>Track shipment:</p>
-<a href="${link}">${link}</a>
-`
-});
-}
-
 }catch(err){
 console.error("Email failed:",err);
 }
@@ -121,25 +94,11 @@ SYSTEM ROUTES
 ========================================================= */
 
 app.get('/',(req,res)=>{
-res.send('BlueRoute API is running 🚀');
+res.send('BlueRoute API running');
 });
 
 app.get('/health',(req,res)=>{
 res.json({status:"ok"});
-});
-
-app.get('/healthz',(req,res)=>{
-res.status(200).send("OK");
-});
-
-app.get('/api/test-db',async(req,res)=>{
-try{
-const result=await pool.query('SELECT NOW()');
-res.json({connected:true,time:result.rows[0]});
-}catch(error){
-console.error(error);
-res.status(500).json({connected:false,error:error.message});
-}
 });
 
 /* =========================================================
@@ -148,7 +107,7 @@ ADMIN LOGIN
 
 app.post("/api/admin/login",(req,res)=>{
 
-const { username, password } = req.body;
+const {username,password} = req.body;
 
 if(
 username === process.env.ADMIN_USER &&
@@ -176,7 +135,7 @@ error:"Invalid credentials"
 });
 
 /* =========================================================
-ADMIN SESSION CHECK
+SESSION CHECK
 ========================================================= */
 
 app.get("/api/admin/session-check",(req,res)=>{
@@ -247,10 +206,6 @@ destination
 
 try{
 
-if(!origin||!destination){
-return res.status(400).json({error:"Origin and destination required"});
-}
-
 const trackingNumber='BR'+Date.now();
 
 const shipmentInsert=await pool.query(
@@ -286,10 +241,7 @@ trackingNumber
 
 }catch(error){
 console.error(error);
-res.status(500).json({
-success:false,
-error:'Failed to create shipment'
-});
+res.status(500).json({success:false});
 }
 
 });
@@ -310,7 +262,6 @@ origin,
 destination,
 last_updated
 FROM shipments
-WHERE archived=FALSE
 ORDER BY last_updated DESC
 `);
 
@@ -318,131 +269,10 @@ res.json(result.rows);
 
 }catch(error){
 console.error(error);
-res.status(500).json({error:'Failed to load shipments'});
+res.status(500).json({error:'Failed'});
 }
 
 });
-
-/* =========================================================
-UPDATE SHIPMENT
-========================================================= */
-
-app.post('/api/admin/update-shipment',async(req,res)=>{
-
-const{trackingNumber,status,location,remark}=req.body;
-
-try{
-
-const shipmentResult=await pool.query(
-'SELECT id FROM shipments WHERE tracking_number=$1',
-[trackingNumber]
-);
-
-if(shipmentResult.rows.length===0){
-return res.status(404).json({success:false,message:'Shipment not found'});
-}
-
-const shipmentId=shipmentResult.rows[0].id;
-
-await pool.query(
-'UPDATE shipments SET status=$1,last_updated=NOW() WHERE id=$2',
-[status,shipmentId]
-);
-
-await pool.query(
-`INSERT INTO scan_events (shipment_id,location,remark,scanned_at)
-VALUES($1,$2,$3,NOW())`,
-[shipmentId,location,remark]
-);
-
-res.json({success:true});
-
-}catch(error){
-console.error(error);
-res.status(500).json({success:false,message:'Update failed'});
-}
-
-});
-
-/* =========================================================
-ARCHIVE SHIPMENT
-========================================================= */
-
-app.post('/api/admin/archive-shipment',async(req,res)=>{
-
-const{tracking}=req.body;
-
-try{
-
-await pool.query(
-'UPDATE shipments SET archived=TRUE WHERE tracking_number=$1',
-[tracking]
-);
-
-res.json({success:true});
-
-}catch(error){
-console.error(error);
-res.status(500).json({success:false,message:'Archive failed'});
-}
-
-});
-
-/* =========================================================
-WAYBILL GENERATOR
-========================================================= */
-
-app.get('/api/admin/waybill/:trackingNumber',async(req,res)=>{
-
-const{trackingNumber}=req.params;
-
-try{
-
-const result=await pool.query(
-'SELECT * FROM shipments WHERE tracking_number=$1',
-[trackingNumber]
-);
-
-if(result.rows.length===0){
-return res.status(404).send('Shipment not found');
-}
-
-const shipment=result.rows[0];
-
-const doc=new PDFDocument({size:'A6',margin:20});
-
-res.setHeader('Content-Type','application/pdf');
-res.setHeader(
-'Content-Disposition',
-`inline; filename=waybill-${trackingNumber}.pdf`
-);
-
-doc.pipe(res);
-
-doc.fontSize(16).text('BlueRoute Express',{align:'center'});
-doc.moveDown();
-
-doc.fontSize(12).text(`Tracking Number: ${shipment.tracking_number}`);
-doc.text(`Origin: ${shipment.origin}`);
-doc.text(`Destination: ${shipment.destination}`);
-doc.text(`Status: ${shipment.status}`);
-doc.text(`Last Update: ${shipment.last_updated}`);
-
-doc.moveDown();
-doc.text('Handle With Care',{align:'center'});
-
-doc.end();
-
-}catch(error){
-console.error(error);
-res.status(500).send('Waybill generation failed');
-}
-
-});
-
-/* =========================================================
-SERVER START
-========================================================= */
 
 const PORT=process.env.PORT||3000;
 
