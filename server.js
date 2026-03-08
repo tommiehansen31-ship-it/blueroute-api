@@ -151,7 +151,7 @@ res.json({status:"ok"});
 });
 
 /* =========================================================
-TRACK SHIPMENT
+TRACK SHIPMENT (TIMELINE SUPPORT)
 ========================================================= */
 
 app.get('/api/track/:trackingNumber',async(req,res)=>{
@@ -249,7 +249,27 @@ $11,$12,$13,$14,$15,$16,$17,$18,
 $19,NOW()
 )
 RETURNING id`,
-[trackingNumber,origin,destination,'Shipment Created']
+[
+trackingNumber,
+senderName,
+senderAddress,
+senderPhone,
+senderEmail,
+receiverName,
+receiverAddress,
+receiverPhone,
+receiverEmail,
+origin,
+destination,
+shipmentName,
+weight,
+itemsSent,
+boxCount,
+sentDate,
+estimatedDelivery,
+remarks,
+'Shipment Created'
+]
 );
 
 const shipmentId=shipmentInsert.rows[0].id;
@@ -278,6 +298,63 @@ trackingNumber
 }catch(error){
 console.error(error);
 res.status(500).json({success:false});
+}
+
+});
+
+/* =========================================================
+UPDATE SHIPMENT STATUS (FIXED)
+========================================================= */
+
+app.post('/api/admin/update-shipment', async (req,res)=>{
+
+const {trackingNumber,status}=req.body;
+
+try{
+
+const shipmentResult=await pool.query(
+'SELECT id FROM shipments WHERE tracking_number=$1',
+[trackingNumber]
+);
+
+if(shipmentResult.rows.length===0){
+return res.status(404).json({success:false,error:"Shipment not found"});
+}
+
+const shipmentId=shipmentResult.rows[0].id;
+
+/* update shipment */
+
+await pool.query(
+`UPDATE shipments
+SET status=$1,last_updated=NOW()
+WHERE id=$2`,
+[status,shipmentId]
+);
+
+/* add timeline event */
+
+const location="System Update";
+const remark=status;
+
+await pool.query(
+`INSERT INTO scan_events (shipment_id,location,remark,scanned_at)
+VALUES($1,$2,$3,NOW())`,
+[
+shipmentId,
+location,
+remark
+]
+);
+
+res.json({success:true});
+
+}catch(error){
+
+console.error("Update shipment error:",error);
+
+res.status(500).json({success:false});
+
 }
 
 });
