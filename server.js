@@ -208,11 +208,22 @@ app.post('/api/admin/create-shipment',async(req,res)=>{
 
 const {
 senderName,
+senderAddress,
+senderPhone,
 senderEmail,
 receiverName,
+receiverAddress,
+receiverPhone,
 receiverEmail,
 origin,
-destination
+destination,
+shipmentName,
+weight,
+itemsSent,
+boxCount,
+sentDate,
+estimatedDelivery,
+remarks
 } = req.body;
 
 try{
@@ -221,13 +232,53 @@ const trackingNumber='BR'+Date.now()+Math.floor(Math.random()*1000);
 
 const shipmentInsert=await pool.query(
 `INSERT INTO shipments
-(tracking_number,origin,destination,status,last_updated)
-VALUES($1,$2,$3,$4,NOW())
+(
+tracking_number,
+sender_name,
+sender_address,
+sender_phone,
+sender_email,
+receiver_name,
+receiver_address,
+receiver_phone,
+receiver_email,
+origin,
+destination,
+shipment_name,
+weight,
+items_sent,
+box_count,
+sent_date,
+estimated_delivery,
+remarks,
+status,
+last_updated
+)
+VALUES(
+$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+$11,$12,$13,$14,$15,$16,$17,$18,
+$19,NOW()
+)
 RETURNING id`,
 [
 trackingNumber,
+senderName,
+senderAddress,
+senderPhone,
+senderEmail,
+receiverName,
+receiverAddress,
+receiverPhone,
+receiverEmail,
 origin,
 destination,
+shipmentName,
+weight,
+itemsSent,
+boxCount,
+sentDate,
+estimatedDelivery,
+remarks,
 'Shipment Created'
 ]
 );
@@ -237,18 +288,12 @@ const shipmentId=shipmentInsert.rows[0].id;
 await pool.query(
 `INSERT INTO scan_events (shipment_id,location,remark,scanned_at)
 VALUES($1,$2,$3,NOW())`,
-[shipmentId,origin,'Shipment Created']
-);
-
-sendShipmentEmail({
-trackingNumber,
-senderName,
-senderEmail,
-receiverName,
-receiverEmail,
+[
+shipmentId,
 origin,
-destination
-});
+'Shipment Created'
+]
+);
 
 res.json({
 success:true,
@@ -256,8 +301,11 @@ trackingNumber
 });
 
 }catch(error){
-console.error(error);
+
+console.error("Create shipment error:",error);
+
 res.status(500).json({success:false});
+
 }
 
 });
