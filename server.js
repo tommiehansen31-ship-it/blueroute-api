@@ -254,22 +254,27 @@ app.get('/api/admin/shipments',async(req,res)=>{
 
 try{
 
-const result=await pool.query(`
+const result = await pool.query(`
 SELECT
 tracking_number AS tracking,
 status,
 origin,
-destination,
-last_updated
+destination
 FROM shipments
-ORDER BY last_updated DESC
+ORDER BY id DESC
 `);
 
 res.json(result.rows);
 
 }catch(error){
-console.error(error);
-res.status(500).json({error:'Failed'});
+
+console.error("Shipment list error:",error);
+
+res.status(500).json({
+error:"Failed",
+details:error.message
+});
+
 }
 
 });
