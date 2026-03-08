@@ -4,10 +4,15 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const PDFDocument = require('pdfkit');
 const nodemailer = require('nodemailer');
+const crypto = require("crypto");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+/* =========================================================
+DATABASE
+========================================================= */
 
 const pool = new Pool({
 connectionString: process.env.DATABASE_URL,
@@ -15,14 +20,36 @@ ssl:{rejectUnauthorized:false}
 });
 
 /* =========================================================
+ADMIN SESSION STORAGE
+========================================================= */
+
+let ADMIN_SESSIONS = {};
+
+/* =========================================================
 ADMIN AUTH MIDDLEWARE
 ========================================================= */
 
-app.use('/api/admin',(req,res,next)=>{
-if(req.headers.authorization!==process.env.ADMIN_SECRET){
-return res.status(403).json({error:"Unauthorized"});
+app.use("/api/admin",(req,res,next)=>{
+
+/* allow login without token */
+if(req.path === "/login"){
+return next();
 }
-next();
+
+const token = req.headers.authorization;
+
+/* allow ADMIN_SECRET */
+if(token === process.env.ADMIN_SECRET){
+return next();
+}
+
+/* allow valid login session */
+if(token && ADMIN_SESSIONS[token]){
+return next();
+}
+
+return res.status(403).json({error:"Unauthorized"});
+
 });
 
 /* =========================================================
@@ -116,6 +143,55 @@ res.status(500).json({connected:false,error:error.message});
 });
 
 /* =========================================================
+ADMIN LOGIN
+========================================================= */
+
+app.post("/api/admin/login",(req,res)=>{
+
+const { username, password } = req.body;
+
+if(
+username === process.env.ADMIN_USER &&
+password === process.env.ADMIN_PASS
+){
+
+const token = crypto.randomBytes(32).toString("hex");
+
+ADMIN_SESSIONS[token] = {
+created: Date.now()
+};
+
+return res.json({
+success:true,
+token
+});
+
+}
+
+res.status(401).json({
+success:false,
+error:"Invalid credentials"
+});
+
+});
+
+/* =========================================================
+ADMIN SESSION CHECK
+========================================================= */
+
+app.get("/api/admin/session-check",(req,res)=>{
+
+const token = req.headers.authorization;
+
+if(!token || !ADMIN_SESSIONS[token]){
+return res.status(403).json({error:"Unauthorized"});
+}
+
+res.json({status:"ok"});
+
+});
+
+/* =========================================================
 TRACK SHIPMENT
 ========================================================= */
 
@@ -193,7 +269,6 @@ VALUES($1,$2,$3,NOW())`,
 [shipmentId,origin,'Shipment Created']
 );
 
-/* EMAIL NOTIFICATION */
 sendShipmentEmail({
 trackingNumber,
 senderName,
@@ -366,64 +441,11 @@ res.status(500).send('Waybill generation failed');
 });
 
 /* =========================================================
-CREATE SHIPMENT (PUBLIC ENDPOINT)
+SERVER START
 ========================================================= */
-
-app.post('/api/shipments',async(req,res)=>{
-
-try{
-
-const{tracking_number,origin,destination,status}=req.body;
-
-const result=await pool.query(
-`INSERT INTO shipments
-(tracking_number,origin,destination,status,last_updated)
-VALUES($1,$2,$3,$4,NOW())
-RETURNING *`,
-[tracking_number,origin,destination,status]
-);
-
-res.json(result.rows[0]);
-
-}catch(error){
-console.error(error);
-res.status(500).json({error:"Failed to create shipment"});
-}
-
-});
-
-app.get("/health", (req, res) => {
-res.send("OK");
-});
 
 const PORT=process.env.PORT||3000;
 
 app.listen(PORT,()=>{
 console.log(`Server running on port ${PORT}`);
-});
-
-/* =========================================================
-ADMIN LOGIN
-========================================================= */
-
-app.post("/api/admin/login",(req,res)=>{
-
-const{username,password}=req.body;
-
-if(
-username==="admin" &&
-password==="BlueRoute@2026"
-){
-return res.json({success:true});
-}
-
-res.status(401).json({success:false});
-
-});
-
-// =============================
-// ADMIN SESSION CHECK
-// =============================
-app.get("/api/admin/session-check", (req, res) => {
-res.json({ status: "ok" });
 });
