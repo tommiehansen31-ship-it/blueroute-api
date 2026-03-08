@@ -19,7 +19,7 @@ ADMIN SESSION STORE
 ========================================================= */
 
 let ADMIN_SESSIONS = {};
-const SESSION_TTL = 1000 * 60 * 60 * 2; // 2 hours
+const SESSION_TTL = 1000 * 60 * 60 * 2;
 
 /* =========================================================
 ADMIN AUTH MIDDLEWARE
@@ -27,7 +27,7 @@ ADMIN AUTH MIDDLEWARE
 
 app.use('/api/admin',(req,res,next)=>{
 
-if(req.path === "/login"){
+if(req.path === "/login" || req.path === "/session-check"){
 return next();
 }
 
@@ -43,8 +43,6 @@ if(!session){
 return res.status(403).json({error:"Unauthorized"});
 }
 
-/* expire old tokens */
-
 if(Date.now() - session.created > SESSION_TTL){
 delete ADMIN_SESSIONS[token];
 return res.status(403).json({error:"Session expired"});
@@ -53,45 +51,6 @@ return res.status(403).json({error:"Session expired"});
 next();
 
 });
-
-/* =========================================================
-EMAIL SYSTEM
-========================================================= */
-
-const mailer = nodemailer.createTransport({
-service:"gmail",
-auth:{
-user:process.env.EMAIL_USER,
-pass:process.env.EMAIL_PASS
-}
-});
-
-async function sendShipmentEmail(data){
-
-try{
-
-const link=`${process.env.PUBLIC_TRACKING_URL}/tracking.html?track=${data.trackingNumber}`;
-
-if(data.senderEmail){
-await mailer.sendMail({
-from:`"BlueRoute Express" <${process.env.EMAIL_USER}>`,
-to:data.senderEmail,
-subject:`Shipment Created — ${data.trackingNumber}`,
-html:`
-<h2>Shipment Created</h2>
-<p>Hello ${data.senderName || "Customer"},</p>
-<p><strong>Tracking Number:</strong> ${data.trackingNumber}</p>
-<p><strong>Route:</strong> ${data.origin} → ${data.destination}</p>
-<a href="${link}">${link}</a>
-`
-});
-}
-
-}catch(err){
-console.error("Email failed:",err);
-}
-
-}
 
 /* =========================================================
 SYSTEM ROUTES
@@ -144,7 +103,7 @@ SESSION CHECK
 
 app.get("/api/admin/session-check",(req,res)=>{
 
-const token = req.headers.authorization;
+const token=req.headers.authorization;
 
 const session=ADMIN_SESSIONS[token];
 
@@ -288,11 +247,7 @@ const shipmentId=shipmentInsert.rows[0].id;
 await pool.query(
 `INSERT INTO scan_events (shipment_id,location,remark,scanned_at)
 VALUES($1,$2,$3,NOW())`,
-[
-shipmentId,
-origin,
-'Shipment Created'
-]
+[shipmentId,origin,'Shipment Created']
 );
 
 res.json({
@@ -303,63 +258,6 @@ trackingNumber
 }catch(error){
 
 console.error("Create shipment error:",error);
-
-res.status(500).json({success:false});
-
-}
-
-});
-
-/* =========================================================
-UPDATE SHIPMENT
-========================================================= */
-
-app.post('/api/admin/update-shipment', async (req,res)=>{
-
-const {trackingNumber,status}=req.body;
-
-if(!trackingNumber || !status){
-return res.status(400).json({
-success:false,
-error:"Missing trackingNumber or status"
-});
-}
-
-try{
-
-const shipmentResult=await pool.query(
-'SELECT id FROM shipments WHERE tracking_number=$1',
-[trackingNumber]
-);
-
-if(shipmentResult.rows.length===0){
-return res.status(404).json({success:false,error:"Shipment not found"});
-}
-
-const shipmentId=shipmentResult.rows[0].id;
-
-await pool.query(
-`UPDATE shipments
-SET status=$1,last_updated=NOW()
-WHERE id=$2`,
-[status,shipmentId]
-);
-
-await pool.query(
-`INSERT INTO scan_events (shipment_id,location,remark,scanned_at)
-VALUES($1,$2,$3,NOW())`,
-[
-shipmentId,
-"System Update",
-status
-]
-);
-
-res.json({success:true});
-
-}catch(error){
-
-console.error("Update shipment error:",error);
 
 res.status(500).json({success:false});
 
@@ -391,10 +289,7 @@ res.json(result.rows);
 
 console.error("Shipment list error:", error);
 
-res.status(500).json({
-error:"Failed",
-details:error.message
-});
+res.status(500).json({error:"Failed"});
 
 }
 
