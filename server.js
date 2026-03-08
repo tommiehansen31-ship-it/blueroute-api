@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const PDFDocument = require('pdfkit');
 const nodemailer = require('nodemailer');
 const crypto = require("crypto");
 
@@ -20,6 +19,7 @@ ADMIN SESSION STORE
 ========================================================= */
 
 let ADMIN_SESSIONS = {};
+const SESSION_TTL = 1000 * 60 * 60 * 2; // 2 hours
 
 /* =========================================================
 ADMIN AUTH MIDDLEWARE
@@ -37,11 +37,20 @@ if(!token){
 return res.status(403).json({error:"Unauthorized"});
 }
 
-if(ADMIN_SESSIONS[token]){
-return next();
+const session=ADMIN_SESSIONS[token];
+
+if(!session){
+return res.status(403).json({error:"Unauthorized"});
 }
 
-return res.status(403).json({error:"Unauthorized"});
+/* expire old tokens */
+
+if(Date.now() - session.created > SESSION_TTL){
+delete ADMIN_SESSIONS[token];
+return res.status(403).json({error:"Session expired"});
+}
+
+next();
 
 });
 
@@ -71,13 +80,8 @@ subject:`Shipment Created — ${data.trackingNumber}`,
 html:`
 <h2>Shipment Created</h2>
 <p>Hello ${data.senderName || "Customer"},</p>
-
-<p>Your shipment has been created.</p>
-
 <p><strong>Tracking Number:</strong> ${data.trackingNumber}</p>
 <p><strong>Route:</strong> ${data.origin} → ${data.destination}</p>
-
-<p>Track here:</p>
 <a href="${link}">${link}</a>
 `
 });
@@ -142,8 +146,15 @@ app.get("/api/admin/session-check",(req,res)=>{
 
 const token = req.headers.authorization;
 
-if(!token || !ADMIN_SESSIONS[token]){
+const session=ADMIN_SESSIONS[token];
+
+if(!session){
 return res.status(403).json({error:"Unauthorized"});
+}
+
+if(Date.now() - session.created > SESSION_TTL){
+delete ADMIN_SESSIONS[token];
+return res.status(403).json({error:"Session expired"});
 }
 
 res.json({status:"ok"});
@@ -151,7 +162,7 @@ res.json({status:"ok"});
 });
 
 /* =========================================================
-TRACK SHIPMENT (TIMELINE SUPPORT)
+TRACK SHIPMENT
 ========================================================= */
 
 app.get('/api/track/:trackingNumber',async(req,res)=>{
@@ -197,77 +208,26 @@ app.post('/api/admin/create-shipment',async(req,res)=>{
 
 const {
 senderName,
-senderAddress,
-senderPhone,
 senderEmail,
 receiverName,
-receiverAddress,
-receiverPhone,
 receiverEmail,
 origin,
-destination,
-shipmentName,
-weight,
-itemsSent,
-boxCount,
-sentDate,
-estimatedDelivery,
-remarks
+destination
 } = req.body;
 
 try{
 
-const trackingNumber='BR'+Date.now();
+const trackingNumber='BR'+Date.now()+Math.floor(Math.random()*1000);
 
 const shipmentInsert=await pool.query(
 `INSERT INTO shipments
-(
-tracking_number,
-sender_name,
-sender_address,
-sender_phone,
-sender_email,
-receiver_name,
-receiver_address,
-receiver_phone,
-receiver_email,
-origin,
-destination,
-shipment_name,
-weight,
-items_sent,
-box_count,
-sent_date,
-estimated_delivery,
-remarks,
-status,
-last_updated
-)
-VALUES(
-$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-$11,$12,$13,$14,$15,$16,$17,$18,
-$19,NOW()
-)
+(tracking_number,origin,destination,status,last_updated)
+VALUES($1,$2,$3,$4,NOW())
 RETURNING id`,
 [
 trackingNumber,
-senderName,
-senderAddress,
-senderPhone,
-senderEmail,
-receiverName,
-receiverAddress,
-receiverPhone,
-receiverEmail,
 origin,
 destination,
-shipmentName,
-weight,
-itemsSent,
-boxCount,
-sentDate,
-estimatedDelivery,
-remarks,
 'Shipment Created'
 ]
 );
@@ -303,12 +263,19 @@ res.status(500).json({success:false});
 });
 
 /* =========================================================
-UPDATE SHIPMENT STATUS (FIXED)
+UPDATE SHIPMENT
 ========================================================= */
 
 app.post('/api/admin/update-shipment', async (req,res)=>{
 
 const {trackingNumber,status}=req.body;
+
+if(!trackingNumber || !status){
+return res.status(400).json({
+success:false,
+error:"Missing trackingNumber or status"
+});
+}
 
 try{
 
@@ -323,8 +290,6 @@ return res.status(404).json({success:false,error:"Shipment not found"});
 
 const shipmentId=shipmentResult.rows[0].id;
 
-/* update shipment */
-
 await pool.query(
 `UPDATE shipments
 SET status=$1,last_updated=NOW()
@@ -332,18 +297,13 @@ WHERE id=$2`,
 [status,shipmentId]
 );
 
-/* add timeline event */
-
-const location="System Update";
-const remark=status;
-
 await pool.query(
 `INSERT INTO scan_events (shipment_id,location,remark,scanned_at)
 VALUES($1,$2,$3,NOW())`,
 [
 shipmentId,
-location,
-remark
+"System Update",
+status
 ]
 );
 
