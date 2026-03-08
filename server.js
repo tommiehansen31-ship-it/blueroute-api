@@ -195,14 +195,25 @@ CREATE SHIPMENT
 
 app.post('/api/admin/create-shipment',async(req,res)=>{
 
-const{
+const {
 senderName,
+senderAddress,
+senderPhone,
 senderEmail,
 receiverName,
+receiverAddress,
+receiverPhone,
 receiverEmail,
 origin,
-destination
-}=req.body;
+destination,
+shipmentName,
+weight,
+itemsSent,
+boxCount,
+sentDate,
+estimatedDelivery,
+remarks
+} = req.body;
 
 try{
 
@@ -210,8 +221,33 @@ const trackingNumber='BR'+Date.now();
 
 const shipmentInsert=await pool.query(
 `INSERT INTO shipments
-(tracking_number,origin,destination,status,last_updated)
-VALUES($1,$2,$3,$4,NOW())
+(
+tracking_number,
+sender_name,
+sender_address,
+sender_phone,
+sender_email,
+receiver_name,
+receiver_address,
+receiver_phone,
+receiver_email,
+origin,
+destination,
+shipment_name,
+weight,
+items_sent,
+box_count,
+sent_date,
+estimated_delivery,
+remarks,
+status,
+last_updated
+)
+VALUES(
+$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+$11,$12,$13,$14,$15,$16,$17,$18,
+$19,NOW()
+)
 RETURNING id`,
 [trackingNumber,origin,destination,'Shipment Created']
 );
