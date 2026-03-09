@@ -265,22 +265,44 @@ res.status(500).json({success:false});
 });
 
 /* =========================================================
-ADMIN SHIPMENT LIST
+ADMIN SHIPMENT LIST (PAGINATION + SEARCH)
 ========================================================= */
 
 app.get('/api/admin/shipments', async (req,res)=>{
 
 try{
 
-const result = await pool.query(`
+const page = parseInt(req.query.page) || 1;
+const limit = 20;
+const offset = (page - 1) * limit;
+
+const search = req.query.search || "";
+
+let query = `
 SELECT
 tracking_number AS tracking,
 origin,
 destination,
 status
 FROM shipments
+`;
+
+let params = [];
+
+if(search){
+
+query += `WHERE tracking_number ILIKE $1`;
+params.push(`%${search}%`);
+
+}
+
+query += `
 ORDER BY id DESC
-`);
+LIMIT ${limit}
+OFFSET ${offset}
+`;
+
+const result = await pool.query(query,params);
 
 res.json(result.rows);
 
