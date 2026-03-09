@@ -163,91 +163,47 @@ res.status(500).json({error:'Server error'});
 CREATE SHIPMENT
 ========================================================= */
 
-app.post('/api/admin/create-shipment',async(req,res)=>{
+app.post('/api/admin/create-shipment', async (req,res)=>{
 
 const {
-senderName,
-senderAddress,
-senderPhone,
-senderEmail,
-receiverName,
-receiverAddress,
-receiverPhone,
-receiverEmail,
 origin,
 destination,
-shipmentName,
 weight,
-itemsSent,
-boxCount,
-sentDate,
-estimatedDelivery,
-remarks
+boxCount
 } = req.body;
 
 try{
 
-const trackingNumber='BR'+Date.now()+Math.floor(Math.random()*1000);
+const trackingNumber = 'BR' + Date.now() + Math.floor(Math.random()*1000);
 
-const shipmentInsert=await pool.query(
+const shipmentInsert = await pool.query(
 `INSERT INTO shipments
 (
 tracking_number,
-sender_name,
-sender_address,
-sender_phone,
-sender_email,
-receiver_name,
-receiver_address,
-receiver_phone,
-receiver_email,
 origin,
 destination,
-shipment_name,
 weight,
-items_sent,
 box_count,
-sent_date,
-estimated_delivery,
-remarks,
-status,
-last_updated
+status
 )
-VALUES(
-$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-$11,$12,$13,$14,$15,$16,$17,$18,
-$19,NOW()
-)
+VALUES($1,$2,$3,$4,$5,$6)
 RETURNING id`,
 [
 trackingNumber,
-senderName,
-senderAddress,
-senderPhone,
-senderEmail,
-receiverName,
-receiverAddress,
-receiverPhone,
-receiverEmail,
 origin,
 destination,
-shipmentName,
-weight,
-itemsSent,
-boxCount,
-sentDate,
-estimatedDelivery,
-remarks,
+weight || null,
+boxCount || null,
 'Shipment Created'
 ]
 );
 
-const shipmentId=shipmentInsert.rows[0].id;
+const shipmentId = shipmentInsert.rows[0].id;
 
 await pool.query(
 `INSERT INTO scan_events (shipment_id,location,remark,scanned_at)
 VALUES($1,$2,$3,NOW())`,
-[shipmentId,origin,'Shipment Created']
+[shipmentId, origin, 'Shipment Created']
 );
 
 res.json({
@@ -257,7 +213,7 @@ trackingNumber
 
 }catch(error){
 
-console.error("Create shipment error:",error);
+console.error("Create shipment error:", error);
 
 res.status(500).json({success:false});
 
