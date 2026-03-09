@@ -6,7 +6,16 @@ const nodemailer = require('nodemailer');
 const crypto = require("crypto");
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+origin: [
+"https://blueroute.online",
+"https://www.blueroute.online"
+],
+methods: ["GET","POST","PUT","DELETE"],
+credentials: true
+}));
+
 app.use(express.json());
 
 const pool = new Pool({
