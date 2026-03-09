@@ -332,7 +332,7 @@ const bwipjs = require("bwip-js");
 WAYBILL GENERATOR
 ========================================================= */
 
-app.get("/api/admin/waybill/:trackingNumber", async (req,res)=>{
+app.get("/api/waybill/:trackingNumber", async (req,res)=>{
 
 const {trackingNumber} = req.params;
 
