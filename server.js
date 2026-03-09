@@ -362,9 +362,7 @@ doc.pipe(res);
 
 /* HEADER */
 
-doc.fontSize(22)
-.text("BlueRoute Logistics Waybill",{align:"center"});
-
+doc.fontSize(22).text("BlueRoute Logistics Waybill",{align:"center"});
 doc.moveDown();
 
 /* BARCODE */
@@ -374,8 +372,7 @@ bcid: 'code128',
 text: trackingNumber,
 scale: 3,
 height: 10,
-includetext: true,
-textxalign: 'center'
+includetext: true
 });
 
 doc.image(barcode,{align:"center"});
