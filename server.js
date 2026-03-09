@@ -266,12 +266,12 @@ res.status(500).json({success:false});
 });
 
 /* =========================================================
-UPDATE SHIPMENT STATUS
+UPDATE SHIPMENT STATUS (WITH REMARKS)
 ========================================================= */
 
 app.post('/api/admin/update-shipment', async (req,res)=>{
 
-const {trackingNumber,status} = req.body;
+const {trackingNumber,status,remarks} = req.body;
 
 try{
 
@@ -293,7 +293,7 @@ await pool.query(
 
 await pool.query(
 'INSERT INTO scan_events (shipment_id,location,remark,scanned_at) VALUES($1,$2,$3,NOW())',
-[shipmentId,status,status]
+[shipmentId,status,remarks || status]
 );
 
 res.json({success:true});
