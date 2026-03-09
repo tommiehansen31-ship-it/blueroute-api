@@ -318,6 +318,9 @@ res.status(500).json({error:"Failed"});
 
 const PDFDocument = require("pdfkit");
 
+const PDFDocument = require("pdfkit");
+const bwipjs = require("bwip-js");
+
 /* =========================================================
 WAYBILL GENERATOR
 ========================================================= */
@@ -329,7 +332,7 @@ const {trackingNumber} = req.params;
 try{
 
 const shipmentResult = await pool.query(
-"SELECT * FROM shipments WHERE tracking_number=$1",
+`SELECT * FROM shipments WHERE tracking_number=$1`,
 [trackingNumber]
 );
 
@@ -337,7 +340,7 @@ if(shipmentResult.rows.length === 0){
 return res.status(404).json({error:"Shipment not found"});
 }
 
-const shipment = shipmentResult.rows[0];
+const s = shipmentResult.rows[0];
 
 const doc = new PDFDocument({margin:50});
 
@@ -350,25 +353,80 @@ res.setHeader("Content-Type","application/pdf");
 
 doc.pipe(res);
 
-doc.fontSize(22).text("BlueRoute Logistics Waybill",{align:"center"});
-doc.moveDown();
+/* HEADER */
 
-doc.fontSize(14).text(`Tracking Number: ${shipment.tracking_number}`);
-doc.text(`Origin: ${shipment.origin}`);
-doc.text(`Destination: ${shipment.destination}`);
-doc.text(`Status: ${shipment.status}`);
+doc.fontSize(22)
+.text("BlueRoute Logistics Waybill",{align:"center"});
 
 doc.moveDown();
 
-doc.text("Shipment Information",{underline:true});
-doc.moveDown();
+/* BARCODE */
 
-doc.text(`Created: ${shipment.created_at}`);
+const barcode = await bwipjs.toBuffer({
+bcid: 'code128',
+text: trackingNumber,
+scale: 3,
+height: 10,
+includetext: true,
+textxalign: 'center'
+});
+
+doc.image(barcode,{align:"center"});
 
 doc.moveDown(2);
 
-doc.text("BlueRoute Logistics",{align:"center"});
-doc.text("www.blueroute.online",{align:"center"});
+/* SHIPMENT DETAILS */
+
+doc.fontSize(14).text(`Tracking Number: ${s.tracking_number}`);
+
+doc.moveDown();
+
+/* SENDER */
+
+doc.fontSize(16).text("Sender Information",{underline:true});
+
+doc.fontSize(12)
+.text(`Name: ${s.sendername || ""}`)
+.text(`Address: ${s.senderaddress || ""}`)
+.text(`Phone: ${s.senderphone || ""}`)
+.text(`Email: ${s.senderemail || ""}`);
+
+doc.moveDown();
+
+/* RECEIVER */
+
+doc.fontSize(16).text("Receiver Information",{underline:true});
+
+doc.fontSize(12)
+.text(`Name: ${s.receivername || ""}`)
+.text(`Address: ${s.receiveraddress || ""}`)
+.text(`Phone: ${s.receiverphone || ""}`)
+.text(`Email: ${s.receiveremail || ""}`);
+
+doc.moveDown();
+
+/* SHIPMENT */
+
+doc.fontSize(16).text("Shipment Details",{underline:true});
+
+doc.fontSize(12)
+.text(`Origin Country: ${s.origin}`)
+.text(`Destination Country: ${s.destination}`)
+.text(`Description: ${s.shipmentname || ""}`)
+.text(`Weight: ${s.weight || ""} kg`)
+.text(`Boxes: ${s.box_count || ""}`);
+
+doc.moveDown();
+
+doc.text(`Created: ${new Date(s.created_at).toLocaleDateString()}`);
+
+doc.moveDown(2);
+
+/* FOOTER */
+
+doc.fontSize(10)
+.text("BlueRoute Logistics",{align:"center"})
+.text("www.blueroute.online",{align:"center"});
 
 doc.end();
 
