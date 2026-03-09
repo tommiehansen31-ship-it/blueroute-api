@@ -326,8 +326,6 @@ res.status(500).json({error:"Failed"});
 });
 
 const PDFDocument = require("pdfkit");
-
-const PDFDocument = require("pdfkit");
 const bwipjs = require("bwip-js");
 
 /* =========================================================
