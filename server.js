@@ -266,6 +266,49 @@ res.status(500).json({success:false});
 });
 
 /* =========================================================
+UPDATE SHIPMENT STATUS
+========================================================= */
+
+app.post('/api/admin/update-shipment', async (req,res)=>{
+
+const {trackingNumber,status} = req.body;
+
+try{
+
+const shipment = await pool.query(
+'SELECT id FROM shipments WHERE tracking_number=$1',
+[trackingNumber]
+);
+
+if(shipment.rows.length === 0){
+return res.json({success:false});
+}
+
+const shipmentId = shipment.rows[0].id;
+
+await pool.query(
+'UPDATE shipments SET status=$1, last_updated=NOW() WHERE id=$2',
+[status, shipmentId]
+);
+
+await pool.query(
+'INSERT INTO scan_events (shipment_id,location,remark,scanned_at) VALUES($1,$2,$3,NOW())',
+[shipmentId,status,status]
+);
+
+res.json({success:true});
+
+}catch(error){
+
+console.error("Update shipment error:",error);
+
+res.status(500).json({success:false});
+
+}
+
+});
+
+/* =========================================================
 ADMIN SHIPMENT LIST
 ========================================================= */
 
