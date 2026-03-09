@@ -316,6 +316,72 @@ res.status(500).json({error:"Failed"});
 
 });
 
+const PDFDocument = require("pdfkit");
+
+/* =========================================================
+WAYBILL GENERATOR
+========================================================= */
+
+app.get("/api/admin/waybill/:trackingNumber", async (req,res)=>{
+
+const {trackingNumber} = req.params;
+
+try{
+
+const shipmentResult = await pool.query(
+"SELECT * FROM shipments WHERE tracking_number=$1",
+[trackingNumber]
+);
+
+if(shipmentResult.rows.length === 0){
+return res.status(404).json({error:"Shipment not found"});
+}
+
+const shipment = shipmentResult.rows[0];
+
+const doc = new PDFDocument({margin:50});
+
+res.setHeader(
+"Content-Disposition",
+`attachment; filename=${trackingNumber}-waybill.pdf`
+);
+
+res.setHeader("Content-Type","application/pdf");
+
+doc.pipe(res);
+
+doc.fontSize(22).text("BlueRoute Logistics Waybill",{align:"center"});
+doc.moveDown();
+
+doc.fontSize(14).text(`Tracking Number: ${shipment.tracking_number}`);
+doc.text(`Origin: ${shipment.origin}`);
+doc.text(`Destination: ${shipment.destination}`);
+doc.text(`Status: ${shipment.status}`);
+
+doc.moveDown();
+
+doc.text("Shipment Information",{underline:true});
+doc.moveDown();
+
+doc.text(`Created: ${shipment.created_at}`);
+
+doc.moveDown(2);
+
+doc.text("BlueRoute Logistics",{align:"center"});
+doc.text("www.blueroute.online",{align:"center"});
+
+doc.end();
+
+}catch(error){
+
+console.error("Waybill error:",error);
+
+res.status(500).json({error:"Waybill generation failed"});
+
+}
+
+});
+
 const PORT=process.env.PORT||3000;
 
 app.listen(PORT,()=>{
