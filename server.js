@@ -28,23 +28,18 @@ EMAIL TRANSPORTER
 ========================================================= */
 
 const transporter = nodemailer.createTransport({
-host: process.env.EMAIL_HOST,
-port: 587,
-secure: false,
-auth:{
-user: process.env.EMAIL_USER,
-pass: process.env.EMAIL_PASS
-},
-tls:{
-rejectUnauthorized:false
-}
+  host: process.env.EMAIL_HOST,
+  port: Number(process.env.EMAIL_PORT),
+  secure: process.env.EMAIL_PORT == 465,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
 });
 
-async function sendShipmentEmail(receiverEmail, trackingNumber){
+function sendShipmentEmail(receiverEmail, trackingNumber){
 
-try{
-
-await transporter.sendMail({
+transporter.sendMail({
 from: process.env.EMAIL_USER,
 to: receiverEmail,
 subject: "BlueRoute Shipment Created",
@@ -54,15 +49,9 @@ Tracking Number: ${trackingNumber}
 
 Track your shipment at:
 https://www.blueroute.online/tracking.html`
-});
-
-console.log("Shipment email sent");
-
-}catch(err){
-
-console.error("Email send failed:", err);
-
-}
+})
+.then(()=>console.log("Shipment email sent"))
+.catch(err=>console.error("Email send failed:",err));
 
 }
 
@@ -324,34 +313,6 @@ if(receiverEmail){
 sendShipmentEmail(receiverEmail, trackingNumber);
 }
 
-/* SEND EMAIL NOTIFICATION */
-
-if(receiverEmail){
-
-try{
-
-await transporter.sendMail({
-from: process.env.EMAIL_USER,
-to: receiverEmail,
-subject: "BlueRoute Shipment Created",
-text: `Your shipment has been created.
-
-Tracking Number: ${trackingNumber}
-
-Track it here:
-https://www.blueroute.online/tracking.html`
-});
-
-console.log("Shipment email sent");
-
-}catch(err){
-
-console.error("Email failed:", err);
-
-}
-
-}
-
 res.json({
 success:true,
 trackingNumber
@@ -419,7 +380,7 @@ app.get('/api/admin/shipments', async (req,res)=>{
 try{
 
 const page = parseInt(req.query.page) || 1;
-const limit = parseInt(req.query.limit) || 5000;
+const limit = parseInt(req.query.limit) || 100;
 const offset = (page - 1) * limit;
 
 const search = req.query.search || "";
