@@ -175,8 +175,17 @@ CREATE SHIPMENT
 app.post('/api/admin/create-shipment', async (req,res)=>{
 
 const {
+senderName,
+senderAddress,
+senderPhone,
+senderEmail,
+receiverName,
+receiverAddress,
+receiverPhone,
+receiverEmail,
 origin,
 destination,
+shipmentName,
 weight,
 boxCount
 } = req.body;
@@ -189,18 +198,37 @@ const shipmentInsert = await pool.query(
 `INSERT INTO shipments
 (
 tracking_number,
+sendername,
+senderaddress,
+senderphone,
+senderemail,
+receivername,
+receiveraddress,
+receiverphone,
+receiveremail,
 origin,
 destination,
+shipmentname,
 weight,
 box_count,
-status
+status,
+created_at
 )
-VALUES($1,$2,$3,$4,$5,$6)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW())
 RETURNING id`,
 [
 trackingNumber,
+senderName,
+senderAddress,
+senderPhone,
+senderEmail,
+receiverName,
+receiverAddress,
+receiverPhone,
+receiverEmail,
 origin,
 destination,
+shipmentName,
 weight || null,
 boxCount || null,
 'Shipment Created'
