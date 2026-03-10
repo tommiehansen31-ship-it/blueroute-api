@@ -49,7 +49,7 @@ async function sendShipmentEmail(receiverEmail, trackingNumber){
 try{
 
 await resend.emails.send({
-from: "BlueRoute <onboarding@resend.dev>",
+from: "BlueRoute <noreply@blueroute.online>",
 to: receiverEmail,
 subject: "BlueRoute Shipment Created",
 html: `
