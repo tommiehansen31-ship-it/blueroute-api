@@ -1,4 +1,8 @@
 require('dotenv').config();
+
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -40,25 +44,34 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-function sendShipmentEmail(receiverEmail, trackingNumber){
+async function sendShipmentEmail(receiverEmail, trackingNumber){
 
-transporter.sendMail({
-from: process.env.EMAIL_USER,
+try{
+
+await resend.emails.send({
+from: "BlueRoute <onboarding@resend.dev>",
 to: receiverEmail,
 subject: "BlueRoute Shipment Created",
-text: `Your shipment has been created.
+html: `
+<h2>Your shipment has been created</h2>
 
-Tracking Number: ${trackingNumber}
+<p><strong>Tracking Number:</strong> ${trackingNumber}</p>
 
-Track your shipment at:
-https://www.blueroute.online/tracking.html?tracking=${trackingNumber}`
-})
-.then(info=>{
-console.log("EMAIL SUCCESS:", info.response);
-})
-.catch(err=>{
-console.error("SMTP ERROR:", err);
+<p>Track your shipment here:</p>
+
+<a href="https://www.blueroute.online/tracking.html?tracking=${trackingNumber}">
+Track Shipment
+</a>
+`
 });
+
+console.log("Email sent successfully");
+
+}catch(error){
+
+console.error("EMAIL ERROR:", error);
+
+}
 
 }
 
