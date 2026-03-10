@@ -40,13 +40,17 @@ if(req.path === "/login" || req.path === "/session-check"){
 return next();
 }
 
-const token=req.headers.authorization;
+let token = req.headers.authorization;
 
 if(!token){
 return res.status(403).json({error:"Unauthorized"});
 }
 
-const session=ADMIN_SESSIONS[token];
+if(token.startsWith("Bearer ")){
+token = token.split(" ")[1];
+}
+
+const session = ADMIN_SESSIONS[token];
 
 if(!session){
 return res.status(403).json({error:"Unauthorized"});
@@ -56,6 +60,8 @@ if(Date.now() - session.created > SESSION_TTL){
 delete ADMIN_SESSIONS[token];
 return res.status(403).json({error:"Session expired"});
 }
+
+req.adminToken = token;
 
 next();
 
@@ -112,7 +118,15 @@ SESSION CHECK
 
 app.get("/api/admin/session-check",(req,res)=>{
 
-const token=req.headers.authorization;
+let token = req.headers.authorization;
+
+if(!token){
+return res.status(403).json({error:"Unauthorized"});
+}
+
+if(token.startsWith("Bearer ")){
+token = token.split(" ")[1];
+}
 
 const session=ADMIN_SESSIONS[token];
 
