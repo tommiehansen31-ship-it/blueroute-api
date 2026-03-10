@@ -10,14 +10,9 @@ const crypto = require("crypto");
 
 const app = express();
 
-app.use(cors({
-  origin: [
-    "https://blueroute.online",
-    "https://www.blueroute.online"
-  ],
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"]
-}));
+app.use(cors());
+
+app.options('*', cors());
 
 app.options('*', cors());
 
