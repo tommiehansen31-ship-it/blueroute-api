@@ -6,7 +6,6 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const nodemailer = require('nodemailer');
 const crypto = require("crypto");
 
 const app = express();
@@ -27,22 +26,6 @@ connectionString: process.env.DATABASE_URL,
 ssl:{rejectUnauthorized:false}
 });
 
-/* =========================================================
-EMAIL TRANSPORTER
-========================================================= */
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.hostinger.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    family: 4
-  }
-});
 
 async function sendShipmentEmail(receiverEmail, trackingNumber){
 
@@ -53,15 +36,29 @@ from: "BlueRoute <noreply@blueroute.online>",
 to: receiverEmail,
 subject: "BlueRoute Shipment Created",
 html: `
-<h2>Your shipment has been created</h2>
+html: `
+<h2>BlueRoute Shipment Created</h2>
+
+<p>Hello,</p>
+
+<p>Your shipment has been successfully created in the BlueRoute system.</p>
 
 <p><strong>Tracking Number:</strong> ${trackingNumber}</p>
 
-<p>Track your shipment here:</p>
+<p>You can track the progress of your shipment using the link below:</p>
 
+<p>
 <a href="https://www.blueroute.online/tracking.html?tracking=${trackingNumber}">
-Track Shipment
+Track Your Shipment
 </a>
+</p>
+
+<p>If you did not request this shipment, please contact BlueRoute support.</p>
+
+<br>
+
+<p>BlueRoute Logistics</p>
+<p>www.blueroute.online</p>
 `
 });
 
