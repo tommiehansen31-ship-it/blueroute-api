@@ -321,6 +321,34 @@ if(receiverEmail){
 sendShipmentEmail(receiverEmail, trackingNumber);
 }
 
+/* SEND EMAIL NOTIFICATION */
+
+if(receiverEmail){
+
+try{
+
+await transporter.sendMail({
+from: process.env.EMAIL_USER,
+to: receiverEmail,
+subject: "BlueRoute Shipment Created",
+text: `Your shipment has been created.
+
+Tracking Number: ${trackingNumber}
+
+Track it here:
+https://www.blueroute.online/tracking.html`
+});
+
+console.log("Shipment email sent");
+
+}catch(err){
+
+console.error("Email failed:", err);
+
+}
+
+}
+
 res.json({
 success:true,
 trackingNumber
