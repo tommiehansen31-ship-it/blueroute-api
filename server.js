@@ -24,6 +24,46 @@ ssl:{rejectUnauthorized:false}
 });
 
 /* =========================================================
+EMAIL TRANSPORTER
+========================================================= */
+
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST,
+  port: process.env.EMAIL_PORT,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+async function sendShipmentEmail(receiverEmail, trackingNumber){
+
+try{
+
+await transporter.sendMail({
+from: process.env.EMAIL_USER,
+to: receiverEmail,
+subject: "BlueRoute Shipment Created",
+text: `Your shipment has been created.
+
+Tracking Number: ${trackingNumber}
+
+Track your shipment at:
+https://www.blueroute.online/tracking.html`
+});
+
+console.log("Shipment email sent");
+
+}catch(err){
+
+console.error("Email send failed:", err);
+
+}
+
+}
+
+/* =========================================================
 ADMIN SESSION STORE
 ========================================================= */
 
@@ -269,6 +309,12 @@ await pool.query(
 VALUES($1,$2,$3,NOW())`,
 [shipmentId, origin, 'Shipment Created']
 );
+
+/* SEND EMAIL NOTIFICATION */
+
+if(receiverEmail){
+sendShipmentEmail(receiverEmail, trackingNumber);
+}
 
 res.json({
 success:true,
