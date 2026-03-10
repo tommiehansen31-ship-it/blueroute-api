@@ -14,8 +14,6 @@ app.use(cors());
 
 app.options('*', cors());
 
-app.options('*', cors());
-
 app.use(express.json());
 
 const pool = new Pool({
@@ -32,7 +30,6 @@ await resend.emails.send({
 from: "BlueRoute <noreply@blueroute.online>",
 to: receiverEmail,
 subject: "BlueRoute Shipment Created",
-html: `
 html: `
 <h2>BlueRoute Shipment Created</h2>
 
