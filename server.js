@@ -48,10 +48,14 @@ text: `Your shipment has been created.
 Tracking Number: ${trackingNumber}
 
 Track your shipment at:
-https://www.blueroute.online/tracking.html`
+https://www.blueroute.online/tracking.html?tracking=${trackingNumber}`
 })
-.then(()=>console.log("Shipment email sent"))
-.catch(err=>console.error("Email send failed:",err));
+.then(info=>{
+console.log("EMAIL SUCCESS:", info.response);
+})
+.catch(err=>{
+console.error("SMTP ERROR:", err);
+});
 
 }
 
