@@ -8,12 +8,12 @@ const crypto = require("crypto");
 const app = express();
 
 app.use(cors({
-origin: [
-"https://blueroute.online",
-"https://www.blueroute.online"
-],
-methods: ["GET","POST","PUT","DELETE"],
-credentials: true
+  origin: [
+    "https://blueroute.online",
+    "https://www.blueroute.online"
+  ],
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"]
 }));
 
 app.use(express.json());
@@ -213,6 +213,7 @@ try{
 const trackingNumber = 'BR' + Date.now() + Math.floor(Math.random()*1000);
 
 const shipmentInsert = await pool.query(
+`
 INSERT INTO shipments
 (
 tracking_number,
@@ -235,8 +236,9 @@ estimated_delivery,
 remarks,
 status
 )
-VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-RETURNING id`,
+VALUES
+($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+`,
 [
 trackingNumber,
 senderName,
