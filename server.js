@@ -303,7 +303,11 @@ remarks || null,
 ]
 );
 
-const shipmentId = shipmentInsert.rows[0].id;
+const shipmentId = shipmentInsert.rows?.[0]?.id;
+
+if(!shipmentId){
+throw new Error("Shipment insert failed");
+}
 
 await pool.query(
 `INSERT INTO scan_events (shipment_id,location,remark,scanned_at)
