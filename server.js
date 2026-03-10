@@ -353,7 +353,7 @@ const doc = new PDFDocument({margin:50});
 
 res.setHeader(
 "Content-Disposition",
-`attachment; filename=${trackingNumber}-waybill.pdf`
+`inline; filename=${trackingNumber}-waybill.pdf`
 );
 
 res.setHeader("Content-Type","application/pdf");
