@@ -201,7 +201,11 @@ origin,
 destination,
 shipmentName,
 weight,
-boxCount
+itemsSent,
+boxCount,
+sentDate,
+estimatedDelivery,
+remarks
 } = req.body;
 
 try{
@@ -209,7 +213,7 @@ try{
 const trackingNumber = 'BR' + Date.now() + Math.floor(Math.random()*1000);
 
 const shipmentInsert = await pool.query(
-`INSERT INTO shipments
+INSERT INTO shipments
 (
 tracking_number,
 sendername,
@@ -224,10 +228,14 @@ origin,
 destination,
 shipmentname,
 weight,
+items_sent,
 box_count,
+sent_date,
+estimated_delivery,
+remarks,
 status
 )
-VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 RETURNING id`,
 [
 trackingNumber,
@@ -243,7 +251,11 @@ origin,
 destination,
 shipmentName,
 weight || null,
+itemsSent || null,
 boxCount || null,
+sentDate || null,
+estimatedDelivery || null,
+remarks || null,
 'Shipment Created'
 ]
 );
@@ -323,7 +335,7 @@ app.get('/api/admin/shipments', async (req,res)=>{
 try{
 
 const page = parseInt(req.query.page) || 1;
-const limit = 20;
+const limit = parseInt(req.query.limit) || 5000;
 const offset = (page - 1) * limit;
 
 const search = req.query.search || "";
