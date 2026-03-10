@@ -28,14 +28,16 @@ EMAIL TRANSPORTER
 ========================================================= */
 
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
+  host: "smtp.hostinger.com",
   port: 465,
   secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  family: 4
+  tls: {
+    family: 4
+  }
 });
 
 function sendShipmentEmail(receiverEmail, trackingNumber){
