@@ -10,6 +10,8 @@ const crypto = require("crypto");
 
 const app = express();
 
+app.disable("x-powered-by");
+
 app.use(cors());
 
 app.use(express.json());
@@ -373,6 +375,53 @@ res.json({success:true});
 }catch(error){
 
 console.error("Update shipment error:",error);
+
+res.status(500).json({success:false});
+
+}
+
+});
+
+/* =========================================================
+DELETE SHIPMENT
+========================================================= */
+
+app.delete("/api/admin/delete-shipment/:trackingNumber", async (req,res)=>{
+
+const { trackingNumber } = req.params;
+
+try{
+
+const shipment = await pool.query(
+"SELECT id FROM shipments WHERE tracking_number=$1",
+[trackingNumber]
+);
+
+if(shipment.rows.length === 0){
+return res.json({success:false});
+}
+
+const shipmentId = shipment.rows[0].id;
+
+/* delete scan history */
+
+await pool.query(
+"DELETE FROM scan_events WHERE shipment_id=$1",
+[shipmentId]
+);
+
+/* delete shipment */
+
+await pool.query(
+"DELETE FROM shipments WHERE id=$1",
+[shipmentId]
+);
+
+res.json({success:true});
+
+}catch(error){
+
+console.error("Delete shipment error:",error);
 
 res.status(500).json({success:false});
 
