@@ -5,16 +5,42 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const { Pool } = require('pg');
 const crypto = require("crypto");
 
 const app = express();
 
+/* Hide server fingerprint */
 app.disable("x-powered-by");
 
-app.use(cors());
+/* Security headers */
+app.use(helmet());
 
-app.use(express.json());
+/* CORS protection */
+app.use(cors({
+origin: [
+"https://www.blueroute.online",
+"https://blueroute.online"
+]
+}));
+
+/* Body size protection */
+app.use(express.json({
+limit: "100kb"
+}));
+
+/* GLOBAL API RATE LIMIT */
+
+const apiLimiter = rateLimit({
+windowMs: 15 * 60 * 1000,
+max: 100,
+standardHeaders: true,
+legacyHeaders: false
+});
+
+app.use("/api/", apiLimiter);
 
 const pool = new Pool({
 connectionString: process.env.DATABASE_URL,
@@ -126,7 +152,13 @@ res.json({status:"ok"});
 ADMIN LOGIN
 ========================================================= */
 
-app.post("/api/admin/login",(req,res)=>{
+const loginLimiter = rateLimit({
+windowMs: 15 * 60 * 1000,
+max: 10,
+message: {error:"Too many login attempts. Try again later."}
+});
+
+app.post("/api/admin/login", loginLimiter, (req,res)=>{
 
 const {username,password} = req.body;
 
@@ -488,7 +520,7 @@ const bwipjs = require("bwip-js");
 WAYBILL GENERATOR
 ========================================================= */
 
-app.get("/api/waybill/:trackingNumber", async (req,res)=>{
+app.get("/api/waybill/:trackingNumber", apiLimiter, async (req,res)=>{
 
 const {trackingNumber} = req.params;
 
