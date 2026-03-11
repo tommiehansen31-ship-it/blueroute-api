@@ -12,6 +12,8 @@ const crypto = require("crypto");
 
 const app = express();
 
+app.set("trust proxy", true);
+
 /* Hide server fingerprint */
 app.disable("x-powered-by");
 
