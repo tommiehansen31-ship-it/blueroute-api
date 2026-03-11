@@ -12,7 +12,7 @@ const crypto = require("crypto");
 
 const app = express();
 
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 
 /* Hide server fingerprint */
 app.disable("x-powered-by");
