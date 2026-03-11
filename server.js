@@ -42,7 +42,7 @@ html: `
 <p>You can track the progress of your shipment using the link below:</p>
 
 <p>
-<a href="https://www.blueroute.online/tracking.html?tracking=${trackingNumber}">
+<a href="https://www.blueroute.online/tracking.html?track=${trackingNumber}">
 Track Your Shipment
 </a>
 </p>
