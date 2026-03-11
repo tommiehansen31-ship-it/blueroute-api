@@ -95,6 +95,54 @@ console.error("EMAIL ERROR:", error);
 }
 
 /* =========================================================
+STATUS UPDATE EMAIL
+========================================================= */
+
+async function sendStatusUpdateEmail(receiverEmail, receiverName, trackingNumber, status){
+
+try{
+
+await resend.emails.send({
+from: "BlueRoute <noreply@blueroute.online>",
+to: receiverEmail,
+subject: `Shipment Update: ${trackingNumber}`,
+html: `
+
+<h2>Shipment Status Update</h2>
+
+<p>Hello ${receiverName || "Customer"},</p>
+
+<p>Your shipment status has been updated.</p>
+
+<p><strong>Tracking Number:</strong> ${trackingNumber}</p>
+
+<p><strong>Current Status:</strong> ${status}</p>
+
+<p>
+<a href="https://www.blueroute.online/tracking.html?track=${trackingNumber}">
+Track Shipment
+</a>
+</p>
+
+<br>
+
+<p>BlueRoute Logistics</p>
+<p>www.blueroute.online</p>
+
+`
+});
+
+console.log("Status email sent");
+
+}catch(error){
+
+console.error("STATUS EMAIL ERROR:",error);
+
+}
+
+}
+
+/* =========================================================
 ADMIN SESSION STORE
 ========================================================= */
 
@@ -384,7 +432,7 @@ const {trackingNumber,status,remarks} = req.body;
 try{
 
 const shipment = await pool.query(
-'SELECT id FROM shipments WHERE tracking_number=$1',
+'SELECT id, receiveremail, receivername FROM shipments WHERE tracking_number=$1',
 [trackingNumber]
 );
 
@@ -393,6 +441,9 @@ return res.json({success:false});
 }
 
 const shipmentId = shipment.rows[0].id;
+
+const receiverEmail = shipment.rows[0].receiveremail;
+const receiverName = shipment.rows[0].receivername;
 
 await pool.query(
 'UPDATE shipments SET status=$1, last_updated=NOW() WHERE id=$2',
@@ -403,6 +454,12 @@ await pool.query(
 'INSERT INTO scan_events (shipment_id,location,remark,scanned_at) VALUES($1,$2,$3,NOW())',
 [shipmentId,status,remarks || status]
 );
+
+/* SEND STATUS EMAIL */
+
+if(receiverEmail){
+sendStatusUpdateEmail(receiverEmail, receiverName, trackingNumber, status);
+}
 
 res.json({success:true});
 
