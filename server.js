@@ -310,7 +310,6 @@ weight,
 items_sent,
 box_count,
 status,
-created_at
 FROM shipments
 WHERE tracking_number = $1
 `,
