@@ -291,7 +291,8 @@ const{trackingNumber}=req.params;
 try{
 
 const shipmentResult=await pool.query(
-'SELECT
+`
+SELECT
 id,
 tracking_number,
 sendername,
@@ -306,10 +307,13 @@ origin,
 destination,
 shipmentname,
 weight,
+items_sent,
 box_count,
+status,
 created_at
 FROM shipments
-WHERE tracking_number=$1',
+WHERE tracking_number = $1
+`,
 [trackingNumber]
 );
 
