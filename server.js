@@ -309,7 +309,7 @@ shipmentname,
 weight,
 items_sent,
 box_count,
-status,
+status
 FROM shipments
 WHERE tracking_number = $1
 `,
