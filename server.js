@@ -44,6 +44,18 @@ legacyHeaders: false
 
 app.use("/api/", apiLimiter);
 
+/* =========================================================
+TRACKING RATE LIMIT (ANTI-BOT PROTECTION)
+========================================================= */
+
+const trackingLimiter = rateLimit({
+windowMs: 60 * 1000,
+max: 30,
+message: { error: "Too many tracking requests. Please slow down." },
+standardHeaders: true,
+legacyHeaders: false
+});
+
 const pool = new Pool({
 connectionString: process.env.DATABASE_URL,
 ssl:{rejectUnauthorized:false}
@@ -272,19 +284,37 @@ res.json({status:"ok"});
 TRACK SHIPMENT
 ========================================================= */
 
-app.get('/api/track/:trackingNumber',async(req,res)=>{
+app.get('/api/track/:trackingNumber', trackingLimiter, async(req,res)=>{
 
 const{trackingNumber}=req.params;
 
 try{
 
 const shipmentResult=await pool.query(
-'SELECT * FROM shipments WHERE tracking_number=$1',
+'SELECT
+id,
+tracking_number,
+sendername,
+senderaddress,
+senderphone,
+senderemail,
+receivername,
+receiveraddress,
+receiverphone,
+receiveremail,
+origin,
+destination,
+shipmentname,
+weight,
+box_count,
+created_at
+FROM shipments
+WHERE tracking_number=$1',
 [trackingNumber]
 );
 
 if(shipmentResult.rows.length===0){
-return res.status(404).json({found:false});
+return res.json({found:false});
 }
 
 const shipment=shipmentResult.rows[0];
@@ -432,7 +462,7 @@ const {trackingNumber,status,remarks} = req.body;
 try{
 
 const shipment = await pool.query(
-'SELECT id, receiveremail, receivername FROM shipments WHERE tracking_number=$1',
+'SELECT id, status, receiveremail, receivername FROM shipments WHERE tracking_number=$1',
 [trackingNumber]
 );
 
@@ -441,6 +471,7 @@ return res.json({success:false});
 }
 
 const shipmentId = shipment.rows[0].id;
+const previousStatus = shipment.rows[0].status;
 
 const receiverEmail = shipment.rows[0].receiveremail;
 const receiverName = shipment.rows[0].receivername;
@@ -450,14 +481,26 @@ await pool.query(
 [status, shipmentId]
 );
 
+const locationMap = {
+"Shipment Created": "Origin Processing Facility",
+"Dispatched": "Export Departure Hub",
+"In Transit": "International Transit Facility",
+"Arrival": "Cargo Arrival at Destination Country",
+"Customs": "Customs Clearance Facility",
+"Out for Delivery": "Local Distribution Center",
+"Delivered": "Final Delivery Destination"
+};
+
+const location = locationMap[status] || status;
+
 await pool.query(
 'INSERT INTO scan_events (shipment_id,location,remark,scanned_at) VALUES($1,$2,$3,NOW())',
-[shipmentId,status,remarks || status]
+[shipmentId,location,remarks || status]
 );
 
-/* SEND STATUS EMAIL */
+/* SEND STATUS EMAIL ONLY IF STATUS CHANGED */
 
-if(receiverEmail){
+if(receiverEmail && previousStatus !== status){
 sendStatusUpdateEmail(receiverEmail, receiverName, trackingNumber, status);
 }
 
